@@ -2,17 +2,14 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <!-- 加入 viewport-fit=cover 以支援 iPhone 瀏海屏 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <!-- PWA & 行動裝置優化設定 -->
-    <title>專業計算機 App</title>
+    <title>專業多幣別計算機 App</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="計算機">
     <meta name="theme-color" content="#2563eb">
     
-    <!-- App 圖標 -->
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2344/2344132.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -30,7 +27,6 @@
             overscroll-behavior-y: contain;
             user-select: none;
             -webkit-user-select: none;
-            /* 修正 iOS 點擊延遲 */
             touch-action: manipulation;
         }
 
@@ -44,7 +40,6 @@
             filter: brightness(0.9);
         }
 
-        /* 手機全螢幕佈局優化 */
         @media (max-width: 768px) {
             .app-container {
                 height: 100vh;
@@ -55,40 +50,71 @@
             }
         }
 
-        /* 隱藏滾動條 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* 選中基準幣別的樣式 */
+        .currency-base-active {
+            background-color: #2563eb !important;
+            color: white !important;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center bg-slate-100 md:p-4">
 
-    <!-- 主容器 -->
     <div class="app-container bg-white shadow-2xl md:rounded-3xl overflow-hidden w-full max-w-4xl flex flex-col md:flex-row border border-slate-200">
         
         <!-- 左側：計算機主體 -->
         <div class="flex-1 p-6 flex flex-col justify-between">
-            <h1 class="hidden md:flex text-xl font-bold text-slate-800 mb-6 items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-                專業計算機
-            </h1>
+            <div class="flex justify-between items-center mb-4">
+                <h1 class="hidden md:flex text-xl font-bold text-slate-800 items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    專業計算機
+                </h1>
+                <!-- 匯率狀態標籤 -->
+                <div id="rate-status" class="text-[10px] bg-blue-50 text-blue-500 px-2 py-1 rounded-full font-medium">
+                    正在獲取匯率...
+                </div>
+            </div>
 
             <!-- 顯示螢幕 -->
-            <div class="bg-slate-50 rounded-2xl p-6 mb-4 text-right flex flex-col justify-end border border-slate-100 shadow-inner flex-grow md:flex-grow-0 md:min-h-[160px]">
+            <div class="bg-slate-50 rounded-2xl p-6 mb-4 text-right flex flex-col justify-end border border-slate-100 shadow-inner flex-grow md:flex-grow-0 md:min-h-[220px]">
                 <div id="display-formula" class="text-slate-400 text-sm md:text-base font-medium mb-1 break-all h-6 overflow-hidden"></div>
-                <div id="display-current" class="text-slate-800 text-4xl md:text-5xl font-semibold break-all">0</div>
+                <div class="flex items-baseline justify-end space-x-2 overflow-hidden">
+                    <span id="base-symbol" class="text-blue-600 font-bold text-lg">TWD</span>
+                    <div id="display-current" class="text-slate-800 text-4xl md:text-5xl font-semibold break-all">0</div>
+                </div>
+                
+                <!-- 幣別切換與換算區 -->
+                <div class="mt-6 pt-4 border-t border-slate-200/60 flex flex-col space-y-4">
+                    <!-- 基準幣別選擇器 -->
+                    <div class="flex items-center space-x-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">基準幣別:</span>
+                        <div class="flex bg-slate-200/50 p-1 rounded-lg">
+                            <button onclick="changeBaseCurrency('TWD')" id="btn-twd" class="currency-base-active px-3 py-1 rounded-md text-[10px] font-bold transition-all">TWD</button>
+                            <button onclick="changeBaseCurrency('USD')" id="btn-usd" class="px-3 py-1 rounded-md text-[10px] font-bold text-slate-500 hover:text-slate-700 transition-all">USD</button>
+                            <button onclick="changeBaseCurrency('JPY')" id="btn-jpy" class="px-3 py-1 rounded-md text-[10px] font-bold text-slate-500 hover:text-slate-700 transition-all">JPY</button>
+                        </div>
+                    </div>
+
+                    <!-- 換算結果 -->
+                    <div id="conversion-display" class="flex items-center space-x-6 overflow-x-auto no-scrollbar">
+                        <!-- 動態生成換算項 -->
+                    </div>
+                </div>
             </div>
 
             <!-- 按鍵區 -->
             <div class="grid grid-cols-4 gap-3">
-                <button onclick="handleAction(() => clearAll())" class="calc-button col-span-2 bg-red-50 text-red-600 font-bold py-5 rounded-2xl hover:bg-red-100">AC</button>
-                <button onclick="handleAction(() => deleteLast())" class="calc-button bg-slate-100 text-slate-600 font-bold py-5 rounded-2xl hover:bg-slate-200">DEL</button>
+                <button onclick="handleAction(() => clearAll())" class="calc-button col-span-2 bg-red-50 text-red-600 font-bold py-5 rounded-2xl">AC</button>
+                <button onclick="handleAction(() => deleteLast())" class="calc-button bg-slate-100 text-slate-600 font-bold py-5 rounded-2xl">DEL</button>
                 <button onclick="handleAction(() => appendOperator('/'))" class="calc-button bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">÷</button>
                 
                 <button onclick="handleAction(() => appendNumber('7'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">7</button>
                 <button onclick="handleAction(() => appendNumber('8'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">8</button>
-                <!-- 修正了下方按鍵 9 的語法錯誤 -->
                 <button onclick="handleAction(() => appendNumber('9'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">9</button>
                 <button onclick="handleAction(() => appendOperator('*'))" class="calc-button bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">×</button>
 
@@ -122,45 +148,117 @@
         let formula = '';
         let history = [];
         let isResultDisplayed = false;
+        
+        // 匯率數據與基準幣別
+        let baseCurrency = 'TWD';
+        let exchangeRates = {}; 
+        const rateStatus = document.getElementById('rate-status');
+        const conversionDisplay = document.getElementById('conversion-display');
+        const baseSymbol = document.getElementById('base-symbol');
 
-        // 音訊與回饋控制
+        // 音訊控制
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
         function playFeedback() {
-            // 1. 觸覺回饋 (Haptic)
-            if (navigator.vibrate) {
-                navigator.vibrate(12); // 震動 12 毫秒
-            }
-
-            // 2. 聽覺回饋 (Sound) - 使用 Web Audio API 動態產生
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+            if (navigator.vibrate) navigator.vibrate(12);
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             const oscillator = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
-
-            oscillator.type = 'sine'; // 正弦波，聲音較柔和
-            oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); // 頻率 800Hz
-            
-            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.05); // 快速淡出
-
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.05);
             oscillator.connect(gainNode);
             gainNode.connect(audioCtx.destination);
-
             oscillator.start();
             oscillator.stop(audioCtx.currentTime + 0.05);
         }
 
-        // 統一處理按鈕點擊
         function handleAction(callback) {
             playFeedback();
-            callback();
+            if (callback) callback();
+            updateConversions();
         }
 
         const displayCurrent = document.getElementById('display-current');
         const displayFormula = document.getElementById('display-formula');
         const historyList = document.getElementById('history-list');
+
+        // 獲取匯率
+        async function fetchRates() {
+            rateStatus.innerText = '正在同步...';
+            rateStatus.className = 'text-[10px] bg-blue-50 text-blue-500 px-2 py-1 rounded-full font-medium';
+            
+            try {
+                const response = await fetch(`https://open.er-api.com/v6/latest/${baseCurrency}`);
+                const data = await response.json();
+                if (data && data.rates) {
+                    exchangeRates = data.rates;
+                    rateStatus.innerText = '匯率同步成功';
+                    rateStatus.className = 'text-[10px] bg-green-50 text-green-600 px-2 py-1 rounded-full font-medium';
+                    updateConversions();
+                }
+            } catch (error) {
+                rateStatus.innerText = '連線失敗';
+                rateStatus.className = 'text-[10px] bg-red-50 text-red-500 px-2 py-1 rounded-full font-medium';
+            }
+        }
+
+        // 切換基準幣別
+        function changeBaseCurrency(newBase) {
+            if (baseCurrency === newBase) return;
+            
+            playFeedback();
+            baseCurrency = newBase;
+            baseSymbol.innerText = newBase;
+
+            // 更新按鈕樣式
+            ['TWD', 'USD', 'JPY'].forEach(curr => {
+                const btn = document.getElementById(`btn-${curr.toLowerCase()}`);
+                if (curr === newBase) {
+                    btn.classList.add('currency-base-active');
+                    btn.classList.remove('text-slate-500');
+                } else {
+                    btn.classList.remove('currency-base-active');
+                    btn.classList.add('text-slate-500');
+                }
+            });
+
+            fetchRates();
+        }
+
+        // 更新換算顯示
+        function updateConversions() {
+            const val = parseFloat(currentInput);
+            const targets = ['TWD', 'USD', 'JPY'].filter(c => c !== baseCurrency);
+            
+            if (isNaN(val) || val === 0 || !exchangeRates[targets[0]]) {
+                conversionDisplay.innerHTML = targets.map(curr => `
+                    <div class="flex flex-col items-start min-w-[80px]">
+                        <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">${curr}</span>
+                        <span class="text-sm font-semibold text-slate-400">---</span>
+                    </div>
+                `).join('<div class="w-px h-6 bg-slate-200 shrink-0"></div>');
+                return;
+            }
+
+            conversionDisplay.innerHTML = targets.map((curr, idx) => {
+                const convertedVal = val * exchangeRates[curr];
+                const symbol = curr === 'JPY' ? '¥' : (curr === 'USD' ? '$' : '');
+                const formatted = convertedVal.toLocaleString(undefined, { 
+                    minimumFractionDigits: curr === 'JPY' ? 0 : 2, 
+                    maximumFractionDigits: curr === 'JPY' ? 0 : 2 
+                });
+
+                return `
+                    <div class="flex flex-col items-start min-w-[100px]">
+                        <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">${curr} 換算</span>
+                        <span class="text-sm font-bold text-slate-700">${symbol} ${formatted}</span>
+                    </div>
+                    ${idx < targets.length - 1 ? '<div class="w-px h-6 bg-slate-200 shrink-0"></div>' : ''}
+                `;
+            }).join('');
+        }
 
         function updateDisplay() {
             displayCurrent.innerText = currentInput;
@@ -231,18 +329,14 @@
 
         function calculate() {
             if (isResultDisplayed || (formula === '' && currentInput === '0')) return;
-            
             let fullExpression = formula + currentInput;
             if (currentInput === '0' && formula.trim().length > 0) {
                 fullExpression = formula.trim().split(' ').slice(0, -1).join(' ');
             }
-
             try {
                 const result = new Function('return ' + fullExpression.replace(/×/g, '*').replace(/÷/g, '/'))();
                 const formattedResult = Number(Math.round(result + 'e10') + 'e-10').toString();
-                
                 addToHistory(fullExpression, formattedResult);
-
                 formula = fullExpression + ' =';
                 currentInput = formattedResult;
                 isResultDisplayed = true;
@@ -295,6 +389,11 @@
             if (e.key === 'Escape') handleAction(() => clearAll());
             if (e.key === 'Backspace') { e.preventDefault(); handleAction(() => deleteLast()); }
         });
+
+        window.onload = () => {
+            fetchRates();
+            setInterval(fetchRates, 10 * 60 * 1000);
+        };
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
