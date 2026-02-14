@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <title>專業多幣別計算機 App</title>
+    <title>專業雙模式計算機 App</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="計算機">
@@ -53,11 +53,22 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* 選中基準幣別的樣式 */
         .currency-base-active {
             background-color: #2563eb !important;
             color: white !important;
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        /* 模式切換樣式 */
+        .mode-active {
+            color: #2563eb;
+            border-bottom: 2px solid #2563eb;
+        }
+
+        /* 隱藏匯率區域的動畫 */
+        .mode-transition {
+            transition: all 0.3s ease-in-out;
+            overflow: hidden;
         }
     </style>
 </head>
@@ -68,28 +79,29 @@
         <!-- 左側：計算機主體 -->
         <div class="flex-1 p-6 flex flex-col justify-between">
             <div class="flex justify-between items-center mb-4">
-                <h1 class="hidden md:flex text-xl font-bold text-slate-800 items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
-                    專業計算機
-                </h1>
-                <!-- 匯率狀態標籤 -->
-                <div id="rate-status" class="text-[10px] bg-blue-50 text-blue-500 px-2 py-1 rounded-full font-medium">
+                <!-- 模式切換頁籤 -->
+                <div class="flex space-x-6">
+                    <button onclick="switchMode('normal')" id="mode-normal" class="text-sm font-bold pb-1 mode-active transition-all">一般計算</button>
+                    <button onclick="switchMode('currency')" id="mode-currency" class="text-sm font-bold pb-1 text-slate-400 transition-all">匯率換算</button>
+                </div>
+
+                <!-- 匯率狀態 (僅在匯率模式顯示) -->
+                <div id="rate-status" class="hidden text-[10px] bg-blue-50 text-blue-500 px-2 py-1 rounded-full font-medium">
                     正在獲取匯率...
                 </div>
             </div>
 
             <!-- 顯示螢幕 -->
-            <div class="bg-slate-50 rounded-2xl p-6 mb-4 text-right flex flex-col justify-end border border-slate-100 shadow-inner flex-grow md:flex-grow-0 md:min-h-[220px]">
+            <div id="calc-screen" class="bg-slate-50 rounded-2xl p-6 mb-4 text-right flex flex-col justify-end border border-slate-100 shadow-inner flex-grow md:flex-grow-0 min-h-[160px] transition-all duration-300">
                 <div id="display-formula" class="text-slate-400 text-sm md:text-base font-medium mb-1 break-all h-6 overflow-hidden"></div>
+                
                 <div class="flex items-baseline justify-end space-x-2 overflow-hidden">
-                    <span id="base-symbol" class="text-blue-600 font-bold text-lg">TWD</span>
+                    <span id="base-symbol" class="hidden text-blue-600 font-bold text-lg">TWD</span>
                     <div id="display-current" class="text-slate-800 text-4xl md:text-5xl font-semibold break-all">0</div>
                 </div>
                 
-                <!-- 幣別切換與換算區 -->
-                <div class="mt-6 pt-4 border-t border-slate-200/60 flex flex-col space-y-4">
+                <!-- 匯率擴展區 (預設隱藏) -->
+                <div id="currency-area" class="hidden mt-6 pt-4 border-t border-slate-200/60 flex flex-col space-y-4 mode-transition">
                     <!-- 基準幣別選擇器 -->
                     <div class="flex items-center space-x-2">
                         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">基準幣別:</span>
@@ -102,7 +114,7 @@
 
                     <!-- 換算結果 -->
                     <div id="conversion-display" class="flex items-center space-x-6 overflow-x-auto no-scrollbar">
-                        <!-- 動態生成換算項 -->
+                        <!-- 動態生成 -->
                     </div>
                 </div>
             </div>
@@ -148,13 +160,17 @@
         let formula = '';
         let history = [];
         let isResultDisplayed = false;
+        let currentAppMode = 'normal'; // 'normal' 或 'currency'
         
-        // 匯率數據與基準幣別
+        // 匯率數據
         let baseCurrency = 'TWD';
         let exchangeRates = {}; 
+        
         const rateStatus = document.getElementById('rate-status');
         const conversionDisplay = document.getElementById('conversion-display');
         const baseSymbol = document.getElementById('base-symbol');
+        const currencyArea = document.getElementById('currency-area');
+        const calcScreen = document.getElementById('calc-screen');
 
         // 音訊控制
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -177,12 +193,40 @@
         function handleAction(callback) {
             playFeedback();
             if (callback) callback();
-            updateConversions();
+            if (currentAppMode === 'currency') updateConversions();
         }
 
-        const displayCurrent = document.getElementById('display-current');
-        const displayFormula = document.getElementById('display-formula');
-        const historyList = document.getElementById('history-list');
+        // 模式切換邏輯
+        function switchMode(mode) {
+            if (currentAppMode === mode) return;
+            playFeedback();
+            currentAppMode = mode;
+
+            // UI 切換
+            if (mode === 'currency') {
+                document.getElementById('mode-currency').classList.add('mode-active');
+                document.getElementById('mode-currency').classList.remove('text-slate-400');
+                document.getElementById('mode-normal').classList.remove('mode-active');
+                document.getElementById('mode-normal').classList.add('text-slate-400');
+                
+                currencyArea.classList.remove('hidden');
+                baseSymbol.classList.remove('hidden');
+                rateStatus.classList.remove('hidden');
+                calcScreen.classList.replace('min-h-[160px]', 'min-h-[220px]');
+                
+                if (Object.keys(exchangeRates).length === 0) fetchRates();
+            } else {
+                document.getElementById('mode-normal').classList.add('mode-active');
+                document.getElementById('mode-normal').classList.remove('text-slate-400');
+                document.getElementById('mode-currency').classList.remove('mode-active');
+                document.getElementById('mode-currency').classList.add('text-slate-400');
+                
+                currencyArea.classList.add('hidden');
+                baseSymbol.classList.add('hidden');
+                rateStatus.classList.add('hidden');
+                calcScreen.classList.replace('min-h-[220px]', 'min-h-[160px]');
+            }
+        }
 
         // 獲取匯率
         async function fetchRates() {
@@ -204,30 +248,19 @@
             }
         }
 
-        // 切換基準幣別
         function changeBaseCurrency(newBase) {
             if (baseCurrency === newBase) return;
-            
             playFeedback();
             baseCurrency = newBase;
             baseSymbol.innerText = newBase;
-
-            // 更新按鈕樣式
             ['TWD', 'USD', 'JPY'].forEach(curr => {
                 const btn = document.getElementById(`btn-${curr.toLowerCase()}`);
-                if (curr === newBase) {
-                    btn.classList.add('currency-base-active');
-                    btn.classList.remove('text-slate-500');
-                } else {
-                    btn.classList.remove('currency-base-active');
-                    btn.classList.add('text-slate-500');
-                }
+                if (curr === newBase) btn.classList.add('currency-base-active');
+                else btn.classList.remove('currency-base-active');
             });
-
             fetchRates();
         }
 
-        // 更新換算顯示
         function updateConversions() {
             const val = parseFloat(currentInput);
             const targets = ['TWD', 'USD', 'JPY'].filter(c => c !== baseCurrency);
@@ -259,6 +292,10 @@
                 `;
             }).join('');
         }
+
+        const displayCurrent = document.getElementById('display-current');
+        const displayFormula = document.getElementById('display-formula');
+        const historyList = document.getElementById('history-list');
 
         function updateDisplay() {
             displayCurrent.innerText = currentInput;
@@ -389,11 +426,6 @@
             if (e.key === 'Escape') handleAction(() => clearAll());
             if (e.key === 'Backspace') { e.preventDefault(); handleAction(() => deleteLast()); }
         });
-
-        window.onload = () => {
-            fetchRates();
-            setInterval(fetchRates, 10 * 60 * 1000);
-        };
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
