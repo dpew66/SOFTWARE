@@ -2,7 +2,8 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 加入 viewport-fit=cover 以支援 iPhone 瀏海屏 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
     <!-- PWA & 行動裝置優化設定 -->
     <title>專業計算機 App</title>
@@ -11,21 +12,26 @@
     <meta name="apple-mobile-web-app-title" content="計算機">
     <meta name="theme-color" content="#2563eb">
     
-    <!-- App 圖標 (建議放置一個 icon.png 在同目錄) -->
+    <!-- App 圖標 -->
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2344/2344132.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
         
+        :root {
+            --safe-top: env(safe-area-inset-top);
+            --safe-bottom: env(safe-area-inset-bottom);
+        }
+
         body {
             font-family: 'Inter', 'Microsoft JhengHei', sans-serif;
             background-color: #f8fafc;
-            /* 防止行動裝置上拉動重新整理 */
             overscroll-behavior-y: contain;
-            /* 防止選取文字 */
             user-select: none;
             -webkit-user-select: none;
+            /* 修正 iOS 點擊延遲 */
+            touch-action: manipulation;
         }
 
         .calc-button {
@@ -38,13 +44,20 @@
             filter: brightness(0.9);
         }
 
-        /* 針對手機全螢幕優化 */
+        /* 手機全螢幕佈局優化 */
         @media (max-width: 768px) {
             .app-container {
                 height: 100vh;
+                height: -webkit-fill-available;
                 border-radius: 0;
+                padding-top: var(--safe-top);
+                padding-bottom: var(--safe-bottom);
             }
         }
+
+        /* 隱藏滾動條 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center bg-slate-100 md:p-4">
@@ -61,7 +74,7 @@
                 專業計算機
             </h1>
 
-            <!-- 顯示螢幕 (加強觸控區域感) -->
+            <!-- 顯示螢幕 -->
             <div class="bg-slate-50 rounded-2xl p-6 mb-4 text-right flex flex-col justify-end border border-slate-100 shadow-inner flex-grow md:flex-grow-0 md:min-h-[160px]">
                 <div id="display-formula" class="text-slate-400 text-sm md:text-base font-medium mb-1 break-all h-6 overflow-hidden"></div>
                 <div id="display-current" class="text-slate-800 text-4xl md:text-5xl font-semibold break-all">0</div>
@@ -69,33 +82,33 @@
 
             <!-- 按鍵區 -->
             <div class="grid grid-cols-4 gap-3">
-                <button onclick="clearAll()" class="calc-button col-span-2 bg-red-50 text-red-600 font-bold py-5 rounded-2xl hover:bg-red-100">AC</button>
-                <button onclick="deleteLast()" class="calc-button bg-slate-100 text-slate-600 font-bold py-5 rounded-2xl hover:bg-slate-200">DEL</button>
-                <button onclick="appendOperator('/')" class="calc-button bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">÷</button>
+                <button onclick="handleAction(() => clearAll())" class="calc-button col-span-2 bg-red-50 text-red-600 font-bold py-5 rounded-2xl hover:bg-red-100">AC</button>
+                <button onclick="handleAction(() => deleteLast())" class="calc-button bg-slate-100 text-slate-600 font-bold py-5 rounded-2xl hover:bg-slate-200">DEL</button>
+                <button onclick="handleAction(() => appendOperator('/'))" class="calc-button bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">÷</button>
                 
-                <button onclick="appendNumber('7')" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">7</button>
-                <button onclick="appendNumber('8')" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">8</button>
-                <button onclick="appendNumber('9')" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">9</button>
-                <button onclick="appendOperator('*')" class="calc-button bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">×</button>
+                <button onclick="handleAction(() => appendNumber('7'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">7</button>
+                <button onclick="handleAction(() => appendNumber('8'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">8</button>
+                <button onclick="handleAction(() => appendNumber('9')" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">9</button>
+                <button onclick="handleAction(() => appendOperator('*'))" class="calc-button bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">×</button>
 
-                <button onclick="appendNumber('4')" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">4</button>
-                <button onclick="appendNumber('5')" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">5</button>
-                <button onclick="appendNumber('6')" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">6</button>
-                <button onclick="appendOperator('-')" class="calc-button bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">−</button>
+                <button onclick="handleAction(() => appendNumber('4'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">4</button>
+                <button onclick="handleAction(() => appendNumber('5'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">5</button>
+                <button onclick="handleAction(() => appendNumber('6'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">6</button>
+                <button onclick="handleAction(() => appendOperator('-'))" class="calc-button bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">−</button>
 
-                <button onclick="appendNumber('1')" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">1</button>
-                <button onclick="appendNumber('2')" class="calc-button bg-white text-slate-700 font-semibold py-4 md:py-5 rounded-2xl border border-slate-200 shadow-sm">2</button>
-                <button onclick="appendNumber('3')" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">3</button>
-                <button onclick="appendOperator('+')" class="calc-button bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">+</button>
+                <button onclick="handleAction(() => appendNumber('1'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">1</button>
+                <button onclick="handleAction(() => appendNumber('2'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">2</button>
+                <button onclick="handleAction(() => appendNumber('3'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">3</button>
+                <button onclick="handleAction(() => appendOperator('+'))" class="calc-button bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">+</button>
 
-                <button onclick="appendNumber('0')" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">0</button>
-                <button onclick="appendNumber('.')" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">.</button>
-                <button onclick="calculate()" class="calc-button col-span-2 bg-blue-600 text-white font-bold py-5 rounded-2xl shadow-lg shadow-blue-200 hover:bg-blue-700">=</button>
+                <button onclick="handleAction(() => appendNumber('0'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">0</button>
+                <button onclick="handleAction(() => appendNumber('.'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">.</button>
+                <button onclick="handleAction(() => calculate())" class="calc-button col-span-2 bg-blue-600 text-white font-bold py-5 rounded-2xl shadow-lg shadow-blue-200 hover:bg-blue-700">=</button>
             </div>
         </div>
 
-        <!-- 右側：歷史紀錄區 (手機版隱藏或置底) -->
-        <div class="w-full md:w-72 bg-slate-50 p-6 md:p-8 border-t md:border-t-0 md:border-l border-slate-200 overflow-y-auto">
+        <!-- 右側：歷史紀錄區 -->
+        <div class="w-full md:w-72 bg-slate-50 p-6 md:p-8 border-t md:border-t-0 md:border-l border-slate-200 overflow-y-auto no-scrollbar">
             <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">最近 5 筆紀錄</h2>
             <div id="history-list" class="space-y-3">
                 <div class="text-slate-400 text-xs italic">尚無歷史紀錄</div>
@@ -108,6 +121,41 @@
         let formula = '';
         let history = [];
         let isResultDisplayed = false;
+
+        // 音訊與回饋控制
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playFeedback() {
+            // 1. 觸覺回饋 (Haptic)
+            if (navigator.vibrate) {
+                navigator.vibrate(12); // 震動 12 毫秒
+            }
+
+            // 2. 聽覺回饋 (Sound) - 使用 Web Audio API 動態產生
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.type = 'sine'; // 正弦波，聲音較柔和
+            oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); // 頻率 800Hz
+            
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.05); // 快速淡出
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.05);
+        }
+
+        // 統一處理按鈕點擊
+        function handleAction(callback) {
+            playFeedback();
+            callback();
+        }
 
         const displayCurrent = document.getElementById('display-current');
         const displayFormula = document.getElementById('display-formula');
@@ -182,14 +230,18 @@
 
         function calculate() {
             if (isResultDisplayed || (formula === '' && currentInput === '0')) return;
+            
             let fullExpression = formula + currentInput;
             if (currentInput === '0' && formula.trim().length > 0) {
                 fullExpression = formula.trim().split(' ').slice(0, -1).join(' ');
             }
+
             try {
                 const result = new Function('return ' + fullExpression.replace(/×/g, '*').replace(/÷/g, '/'))();
                 const formattedResult = Number(Math.round(result + 'e10') + 'e-10').toString();
+                
                 addToHistory(fullExpression, formattedResult);
+
                 formula = fullExpression + ' =';
                 currentInput = formattedResult;
                 isResultDisplayed = true;
@@ -217,7 +269,7 @@
                 return;
             }
             historyList.innerHTML = history.map((item, index) => `
-                <div class="history-item bg-white p-3 rounded-xl border border-slate-200 shadow-sm active:bg-blue-50 cursor-pointer group" onclick="useHistory(${index})">
+                <div class="history-item bg-white p-3 rounded-xl border border-slate-200 shadow-sm active:bg-blue-50 cursor-pointer" onclick="handleAction(() => useHistory(${index}))">
                     <div class="text-[10px] text-slate-400 mb-1">${item.expression}</div>
                     <div class="text-sm font-bold text-slate-700 text-right">= ${item.result}</div>
                 </div>
@@ -231,29 +283,22 @@
             updateDisplay();
         }
 
-        // 監聽鍵盤與防止手機縮放
         document.addEventListener('keydown', (e) => {
-            if (e.key >= '0' && e.key <= '9') appendNumber(e.key);
-            if (e.key === '.') appendNumber('.');
-            if (e.key === '+') appendOperator('+');
-            if (e.key === '-') appendOperator('-');
-            if (e.key === '*') appendOperator('*');
-            if (e.key === '/') appendOperator('/');
-            if (e.key === 'Enter' || e.key === '=') calculate();
-            if (e.key === 'Escape') clearAll();
-            if (e.key === 'Backspace') { e.preventDefault(); deleteLast(); }
+            if (e.key >= '0' && e.key <= '9') handleAction(() => appendNumber(e.key));
+            if (e.key === '.') handleAction(() => appendNumber('.'));
+            if (e.key === '+') handleAction(() => appendOperator('+'));
+            if (e.key === '-') handleAction(() => appendOperator('-'));
+            if (e.key === '*') handleAction(() => appendOperator('*'));
+            if (e.key === '/') handleAction(() => appendOperator('/'));
+            if (e.key === 'Enter' || e.key === '=') handleAction(() => calculate());
+            if (e.key === 'Escape') handleAction(() => clearAll());
+            if (e.key === 'Backspace') { e.preventDefault(); handleAction(() => deleteLast()); }
         });
 
-        // 註冊 Service Worker (PWA 核心)
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                const blob = new Blob([`
-                    self.addEventListener('fetch', function(event) {
-                        event.respondWith(fetch(event.request));
-                    });
-                `], { type: 'text/javascript' });
-                const workerUrl = URL.createObjectURL(blob);
-                navigator.serviceWorker.register(workerUrl).catch(err => console.log('SW registration failed'));
+                const blob = new Blob([`self.addEventListener('fetch', (e) => {});`], { type: 'text/javascript' });
+                navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
             });
         }
     </script>
