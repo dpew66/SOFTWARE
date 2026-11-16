@@ -136,7 +136,8 @@
 
             <!-- 按鍵區 -->
             <div class="grid grid-cols-4 gap-3">
-                <button onclick="handleAction(() => clearAll())" class="calc-button col-span-2 bg-red-50 text-red-600 font-bold py-5 rounded-2xl">AC</button>
+                <button onclick="handleAction(() => clearAll())" class="calc-button bg-red-50 text-red-600 font-bold py-5 rounded-2xl">AC</button>
+                <button onclick="handleAction(() => applyPercent())" class="calc-button bg-slate-100 text-slate-600 font-bold py-5 rounded-2xl">%</button>
                 <button onclick="handleAction(() => deleteLast())" class="calc-button bg-slate-100 text-slate-600 font-bold py-5 rounded-2xl">DEL</button>
                 <button onclick="handleAction(() => appendOperator('/'))" class="calc-button bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">÷</button>
 
@@ -315,6 +316,7 @@
         let isResultDisplayed = false;
         let waitingForOperand = false;   // 剛按完運算子，還沒輸入下一個數字
         let isError = false;
+        let replaceOnNextDigit = false;  // 剛按完 %，下一個數字重新輸入
         let currentAppMode = 'normal'; // 'normal' 或 'currency'
 
         const MAX_DIGITS = 15;
@@ -472,23 +474,33 @@
         }
 
         // ================= 顯示 =================
+        // 加上千分位：只處理整數部分，小數部分照使用者輸入保留（例如 1234.50 → 1,234.50）
+        function formatNumberText(str) {
+            if (!/^-?\d+(\.\d*)?$/.test(str)) return str;   // 科學記號、錯誤訊息等原樣顯示
+            const negative = str.startsWith('-');
+            const [intPart, decPart] = (negative ? str.slice(1) : str).split('.');
+            const withCommas = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return (negative ? '-' : '') + withCommas + (decPart !== undefined ? '.' + decPart : '');
+        }
+
         function prettyExpression(expr) {
-            return expr.split(' ').map(t => OP_SYMBOLS[t] || t).join(' ');
+            return expr.split(' ').map(t => OP_SYMBOLS[t] || formatNumberText(t)).join(' ');
         }
 
         const SIZE_STEPS = [
-            { max: 9,        cls: ['text-4xl', 'md:text-5xl'] },
-            { max: 12,       cls: ['text-3xl', 'md:text-4xl'] },
-            { max: 15,       cls: ['text-2xl', 'md:text-3xl'] },
+            { max: 11,       cls: ['text-4xl', 'md:text-5xl'] },
+            { max: 15,       cls: ['text-3xl', 'md:text-4xl'] },
+            { max: 19,       cls: ['text-2xl', 'md:text-3xl'] },
             { max: Infinity, cls: ['text-xl',  'md:text-2xl'] }
         ];
         const ALL_SIZE_CLASSES = SIZE_STEPS.flatMap(s => s.cls);
 
         function updateDisplay() {
-            displayCurrent.innerText = currentInput;
+            const shown = formatNumberText(currentInput);
+            displayCurrent.innerText = shown;
             displayFormula.innerText = prettyExpression(formula);
             // 數字太長時自動縮小字體，避免斷行
-            const step = SIZE_STEPS.find(s => currentInput.length <= s.max);
+            const step = SIZE_STEPS.find(s => shown.length <= s.max);
             displayCurrent.classList.remove(...ALL_SIZE_CLASSES);
             displayCurrent.classList.add(...step.cls);
         }
@@ -505,8 +517,9 @@
                 isError = false;
                 waitingForOperand = false;
                 startNewInput(number);
-            } else if (waitingForOperand) {
+            } else if (waitingForOperand || replaceOnNextDigit) {
                 waitingForOperand = false;
+                replaceOnNextDigit = false;
                 startNewInput(number);
             } else {
                 if (number === '.' && currentInput.includes('.')) return;
@@ -519,6 +532,7 @@
 
         function appendOperator(op) {
             if (isError) return;
+            replaceOnNextDigit = false;
             if (isResultDisplayed) {
                 formula = currentInput + ' ' + op + ' ';
                 isResultDisplayed = false;
@@ -533,16 +547,44 @@
             updateDisplay();
         }
 
+        // 百分比：
+        //   加減時是「前面數值的 %」：200 + 10% → 200 + 20；100 − 20% → 100 − 20（打 8 折）
+        //   乘除或單獨使用時是「÷ 100」：50 × 10% → 50 × 0.1；25% → 0.25
+        function applyPercent() {
+            if (isError || waitingForOperand) return;
+            const value = parseFloat(currentInput);
+            if (isNaN(value)) return;
+
+            if (isResultDisplayed || formula === '') {
+                currentInput = formatResult(value / 100);
+                formula = '';
+                isResultDisplayed = true;   // 接著按數字會重新開始，按運算子會接著算
+            } else {
+                const tokens = formula.trim().split(' ');
+                const lastOp = tokens[tokens.length - 1];
+                if (lastOp === '+' || lastOp === '-') {
+                    const base = evaluate(tokens.slice(0, -1).join(' '));
+                    currentInput = formatResult(base * value / 100);
+                } else {
+                    currentInput = formatResult(value / 100);
+                }
+                replaceOnNextDigit = true;
+            }
+            updateDisplay();
+        }
+
         function clearAll() {
             currentInput = '0';
             formula = '';
             isResultDisplayed = false;
             waitingForOperand = false;
+            replaceOnNextDigit = false;
             isError = false;
             updateDisplay();
         }
 
         function deleteLast() {
+            replaceOnNextDigit = false;
             if (isError) {
                 clearAll();
                 return;
@@ -631,7 +673,7 @@
             historyList.innerHTML = history.map((item, index) => `
                 <div class="history-item bg-white p-3 rounded-xl border border-slate-200 shadow-sm active:bg-blue-50 cursor-pointer" onclick="handleAction(() => useHistory(${index}))">
                     <div class="text-[10px] text-slate-400 mb-1">${item.expression}</div>
-                    <div class="text-sm font-bold text-slate-700 text-right">= ${item.result}</div>
+                    <div class="text-sm font-bold text-slate-700 text-right">= ${formatNumberText(item.result)}</div>
                 </div>
             `).join('');
         }
@@ -654,6 +696,7 @@
             '*': () => appendOperator('*'),
             'x': () => appendOperator('*'),
             '/': () => appendOperator('/'),
+            '%': () => applyPercent(),
             'Enter': () => calculate(),
             '=': () => calculate(),
             'Escape': () => clearAll(),
