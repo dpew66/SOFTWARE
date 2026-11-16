@@ -80,9 +80,25 @@
             transition: opacity 0.15s ease;
         }
         .setting-toggle.is-off { opacity: 0.3; }
+
+        /* 隱藏但仍保留渲染（display:none 的開關不會觸發觸覺回饋） */
+        .haptic-switch {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center bg-slate-100 md:p-4">
+<body ontouchstart="" class="min-h-screen flex items-center justify-center bg-slate-100 md:p-4">
+
+    <!-- iPhone 觸覺回饋用：按鍵（label）綁在這個隱藏開關上，點按鍵 = 切換開關，iOS 會產生系統觸覺回饋 -->
+    <input type="checkbox" switch id="haptic-switch" class="haptic-switch" tabindex="-1" aria-hidden="true">
+    <label for="haptic-switch" id="haptic-label" class="haptic-switch" aria-hidden="true"></label>
 
     <div class="app-container bg-white shadow-2xl md:rounded-3xl overflow-hidden w-full max-w-4xl flex flex-col md:flex-row border border-slate-200">
 
@@ -136,29 +152,29 @@
 
             <!-- 按鍵區 -->
             <div class="grid grid-cols-4 gap-3">
-                <button onclick="handleAction(() => clearAll())" class="calc-button bg-red-50 text-red-600 font-bold py-5 rounded-2xl">AC</button>
-                <button onclick="handleAction(() => applyPercent())" class="calc-button bg-slate-100 text-slate-600 font-bold py-5 rounded-2xl">%</button>
-                <button onclick="handleAction(() => deleteLast())" class="calc-button bg-slate-100 text-slate-600 font-bold py-5 rounded-2xl">DEL</button>
-                <button onclick="handleAction(() => appendOperator('/'))" class="calc-button bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">÷</button>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => clearAll())" class="calc-button block text-center cursor-pointer bg-red-50 text-red-600 font-bold py-5 rounded-2xl">AC</label>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => applyPercent())" class="calc-button block text-center cursor-pointer bg-slate-100 text-slate-600 font-bold py-5 rounded-2xl">%</label>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => deleteLast())" class="calc-button block text-center cursor-pointer bg-slate-100 text-slate-600 font-bold py-5 rounded-2xl">DEL</label>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => appendOperator('/'))" class="calc-button block text-center cursor-pointer bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">÷</label>
 
-                <button onclick="handleAction(() => appendNumber('7'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">7</button>
-                <button onclick="handleAction(() => appendNumber('8'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">8</button>
-                <button onclick="handleAction(() => appendNumber('9'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">9</button>
-                <button onclick="handleAction(() => appendOperator('*'))" class="calc-button bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">×</button>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => appendNumber('7'))" class="calc-button block text-center cursor-pointer bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">7</label>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => appendNumber('8'))" class="calc-button block text-center cursor-pointer bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">8</label>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => appendNumber('9'))" class="calc-button block text-center cursor-pointer bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">9</label>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => appendOperator('*'))" class="calc-button block text-center cursor-pointer bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">×</label>
 
-                <button onclick="handleAction(() => appendNumber('4'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">4</button>
-                <button onclick="handleAction(() => appendNumber('5'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">5</button>
-                <button onclick="handleAction(() => appendNumber('6'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">6</button>
-                <button onclick="handleAction(() => appendOperator('-'))" class="calc-button bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">−</button>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => appendNumber('4'))" class="calc-button block text-center cursor-pointer bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">4</label>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => appendNumber('5'))" class="calc-button block text-center cursor-pointer bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">5</label>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => appendNumber('6'))" class="calc-button block text-center cursor-pointer bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">6</label>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => appendOperator('-'))" class="calc-button block text-center cursor-pointer bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">−</label>
 
-                <button onclick="handleAction(() => appendNumber('1'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">1</button>
-                <button onclick="handleAction(() => appendNumber('2'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">2</button>
-                <button onclick="handleAction(() => appendNumber('3'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">3</button>
-                <button onclick="handleAction(() => appendOperator('+'))" class="calc-button bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">+</button>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => appendNumber('1'))" class="calc-button block text-center cursor-pointer bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">1</label>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => appendNumber('2'))" class="calc-button block text-center cursor-pointer bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">2</label>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => appendNumber('3'))" class="calc-button block text-center cursor-pointer bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">3</label>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => appendOperator('+'))" class="calc-button block text-center cursor-pointer bg-blue-50 text-blue-600 font-bold py-5 rounded-2xl hover:bg-blue-100">+</label>
 
-                <button onclick="handleAction(() => appendNumber('0'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">0</button>
-                <button onclick="handleAction(() => appendNumber('.'))" class="calc-button bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">.</button>
-                <button onclick="handleAction(() => calculate())" class="calc-button col-span-2 bg-blue-600 text-white font-bold py-5 rounded-2xl shadow-lg shadow-blue-200 hover:bg-blue-700">=</button>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => appendNumber('0'))" class="calc-button block text-center cursor-pointer bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">0</label>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => appendNumber('.'))" class="calc-button block text-center cursor-pointer bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">.</label>
+                <label for="haptic-switch" role="button" onclick="handleAction(() => calculate())" class="calc-button block text-center cursor-pointer col-span-2 bg-blue-600 text-white font-bold py-5 rounded-2xl shadow-lg shadow-blue-200 hover:bg-blue-700">=</label>
             </div>
         </div>
 
@@ -196,6 +212,12 @@
             soundBtn.setAttribute('aria-pressed', settings.sound);
             vibrateBtn.classList.toggle('is-off', !settings.vibrate);
             vibrateBtn.setAttribute('aria-pressed', settings.vibrate);
+            // 關閉震動時，按鍵與開關解除綁定，就不會再有觸覺回饋
+            const bindSwitch = settings.vibrate && !supportsVibrate;
+            document.querySelectorAll('.calc-button').forEach(el => {
+                if (bindSwitch) el.setAttribute('for', 'haptic-switch');
+                else el.removeAttribute('for');
+            });
         }
 
         function toggleSetting(name) {
@@ -274,16 +296,7 @@
                 return;
             }
             try {
-                const label = document.createElement('label');
-                label.setAttribute('aria-hidden', 'true');
-                label.style.display = 'none';
-                const input = document.createElement('input');
-                input.type = 'checkbox';
-                input.setAttribute('switch', '');
-                label.appendChild(input);
-                document.head.appendChild(label);
-                label.click();
-                document.head.removeChild(label);
+                document.getElementById('haptic-label').click();
             } catch (e) { /* 不支援就略過 */ }
         }
 
@@ -293,7 +306,7 @@
         }
 
         function isFeedbackTarget(e) {
-            const target = e.target.closest && e.target.closest('button, .history-item');
+            const target = e.target.closest && e.target.closest('button, .calc-button, .history-item');
             return target && !target.classList.contains('setting-toggle');
         }
 
@@ -306,7 +319,8 @@
 
         // iPhone 的觸覺回饋必須在 click（真正的使用者手勢）裡觸發
         document.addEventListener('click', (e) => {
-            if (!supportsVibrate && e.isTrusted && isFeedbackTarget(e)) vibrate();
+            // 計算機按鍵本身已綁定開關，iOS 會直接產生觸覺回饋，不必再模擬點擊
+            if (!supportsVibrate && e.isTrusted && isFeedbackTarget(e) && !e.target.closest('.calc-button')) vibrate();
         });
 
         // ================= 計算機狀態 =================
