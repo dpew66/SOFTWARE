@@ -1,5 +1,5 @@
 // 計算機 Service Worker：讓 App 可以離線開啟
-const CACHE = 'calc-v1';
+const CACHE = 'calc-v2';
 const PRECACHE = [
     './',
     './index.html',
