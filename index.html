@@ -369,14 +369,25 @@
         // 改用點擊隱藏的 <input switch> 開關來觸發系統觸覺回饋
         const supportsVibrate = typeof navigator.vibrate === 'function';
 
+        let lastHapticAt = 0;
+
         function vibrate(strong) {
             if (!settings.vibrate) return;
             if (supportsVibrate) {
                 navigator.vibrate(strong ? 30 : 15);
                 return;
             }
+            // 點輸入框的文字標籤時 click 會觸發兩次，60ms 內只回饋一次
+            const now = Date.now();
+            if (now - lastHapticAt < 60) return;
+            lastHapticAt = now;
             try {
+                // 點隱藏開關可能把焦點搶走，導致輸入框的鍵盤收起，所以觸發後把焦點還回去
+                const active = document.activeElement;
                 document.getElementById('haptic-label').click();
+                if (active && active !== document.activeElement && active.matches('input, textarea')) {
+                    active.focus({ preventScroll: true });
+                }
             } catch (e) { /* 不支援就略過 */ }
         }
 
@@ -386,7 +397,7 @@
         }
 
         function isFeedbackTarget(e) {
-            const target = e.target.closest && e.target.closest('button, .calc-button, .history-item');
+            const target = e.target.closest && e.target.closest('button, .calc-button, .history-item, .cp-field');
             return target && !target.classList.contains('setting-toggle');
         }
 
