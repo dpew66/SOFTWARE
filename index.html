@@ -81,6 +81,26 @@
         }
         .setting-toggle.is-off { opacity: 0.3; }
 
+        /* 複利計算輸入欄 */
+        .cp-field { display: flex; flex-direction: column; }
+        .cp-label { font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 4px; }
+        .cp-input {
+            width: 100%;
+            font-size: 16px; /* 16px 以上，iPhone 點輸入框才不會自動放大畫面 */
+            font-weight: 600;
+            color: #1e293b;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 10px 12px;
+            text-align: right;
+            -webkit-user-select: text;
+            user-select: text;
+            outline: none;
+        }
+        .cp-input:focus { border-color: #2563eb; background: #fff; box-shadow: 0 0 0 3px rgb(37 99 235 / 0.15); }
+        .cp-input.invalid { border-color: #ef4444; }
+
         /* 隱藏但仍保留渲染（display:none 的開關不會觸發觸覺回饋） */
         .haptic-switch {
             position: fixed;
@@ -106,9 +126,10 @@
         <div class="flex-1 p-6 flex flex-col justify-between">
             <div class="flex justify-between items-center mb-4">
                 <!-- 模式切換頁籤 -->
-                <div class="flex space-x-6">
+                <div class="flex space-x-4">
                     <button onclick="switchMode('normal')" id="mode-normal" class="text-sm font-bold pb-1 mode-active transition-all">一般計算</button>
                     <button onclick="switchMode('currency')" id="mode-currency" class="text-sm font-bold pb-1 text-slate-400 transition-all">匯率換算</button>
+                    <button onclick="switchMode('compound')" id="mode-compound" class="text-sm font-bold pb-1 text-slate-400 transition-all">複利計算</button>
                 </div>
 
                 <div class="flex items-center space-x-2">
@@ -151,7 +172,7 @@
             </div>
 
             <!-- 按鍵區 -->
-            <div class="grid grid-cols-4 gap-3">
+            <div id="keypad" class="grid grid-cols-4 gap-3">
                 <label for="haptic-switch" role="button" onclick="handleAction(() => clearAll())" class="calc-button block text-center cursor-pointer bg-red-50 text-red-600 font-bold py-5 rounded-2xl">AC</label>
                 <label for="haptic-switch" role="button" onclick="handleAction(() => applyPercent())" class="calc-button block text-center cursor-pointer bg-slate-100 text-slate-600 font-bold py-5 rounded-2xl">%</label>
                 <label for="haptic-switch" role="button" onclick="handleAction(() => deleteLast())" class="calc-button block text-center cursor-pointer bg-slate-100 text-slate-600 font-bold py-5 rounded-2xl">DEL</label>
@@ -176,10 +197,69 @@
                 <label for="haptic-switch" role="button" onclick="handleAction(() => appendNumber('.'))" class="calc-button block text-center cursor-pointer bg-white text-slate-700 font-semibold py-5 rounded-2xl border border-slate-200 shadow-sm">.</label>
                 <label for="haptic-switch" role="button" onclick="handleAction(() => calculate())" class="calc-button block text-center cursor-pointer col-span-2 bg-blue-600 text-white font-bold py-5 rounded-2xl shadow-lg shadow-blue-200 hover:bg-blue-700">=</label>
             </div>
+
+            <!-- 複利計算 (預設隱藏) -->
+            <div id="compound-panel" class="hidden flex-1 flex flex-col space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="cp-field">
+                        <span class="cp-label">初始金額（元）</span>
+                        <input id="cp-principal" class="cp-input" type="text" inputmode="numeric" data-kind="money" value="100,000">
+                    </label>
+                    <label class="cp-field">
+                        <span class="cp-label">每月儲蓄（元）</span>
+                        <input id="cp-monthly" class="cp-input" type="text" inputmode="numeric" data-kind="money" value="10,000">
+                    </label>
+                    <label class="cp-field">
+                        <span class="cp-label">年利率（%）</span>
+                        <input id="cp-rate" class="cp-input" type="text" inputmode="decimal" data-kind="rate" value="6">
+                    </label>
+                    <label class="cp-field">
+                        <span class="cp-label">投資期間（年）</span>
+                        <input id="cp-years" class="cp-input" type="text" inputmode="numeric" data-kind="int" value="20">
+                    </label>
+                    <label class="cp-field col-span-2">
+                        <span class="cp-label">開始年份</span>
+                        <input id="cp-start" class="cp-input" type="text" inputmode="numeric" data-kind="int" value="">
+                    </label>
+                </div>
+
+                <!-- 結果 -->
+                <div class="bg-blue-600 text-white rounded-2xl p-5 shadow-lg shadow-blue-200">
+                    <div class="text-xs font-medium text-blue-100" id="cp-final-label">最終資產</div>
+                    <div class="text-3xl font-semibold mt-1 break-all" id="cp-final">—</div>
+                    <div class="mt-4 h-2 rounded-full bg-blue-400/50 overflow-hidden flex">
+                        <div id="cp-bar-invested" class="h-full bg-white" style="width:0%"></div>
+                        <div id="cp-bar-interest" class="h-full bg-amber-300" style="width:0%"></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 mt-3 text-xs">
+                        <div><div class="text-blue-100 flex items-center"><span class="inline-block w-2 h-2 rounded-full bg-white mr-1"></span>總投入本金</div><div class="font-semibold text-sm mt-0.5 break-all" id="cp-invested">—</div></div>
+                        <div><div class="text-blue-100 flex items-center"><span class="inline-block w-2 h-2 rounded-full bg-amber-300 mr-1"></span>累積利息</div><div class="font-semibold text-sm mt-0.5 break-all" id="cp-interest">—</div></div>
+                        <div><div class="text-blue-100">資產倍數</div><div class="font-semibold text-sm mt-0.5" id="cp-multiple">—</div></div>
+                    </div>
+                </div>
+
+                <!-- 逐年明細 -->
+                <div class="border border-slate-200 rounded-2xl overflow-hidden">
+                    <div class="max-h-72 overflow-y-auto no-scrollbar">
+                        <table class="w-full text-xs">
+                            <thead class="bg-slate-50 text-slate-500 sticky top-0">
+                                <tr>
+                                    <th class="text-left font-semibold px-3 py-2">年份</th>
+                                    <th class="text-right font-semibold px-3 py-2">累計投入</th>
+                                    <th class="text-right font-semibold px-3 py-2">累積利息</th>
+                                    <th class="text-right font-semibold px-3 py-2">年底資產</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cp-table" class="text-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-400">以每月複利計算（年利率 ÷ 12），每月儲蓄於月底存入；未計稅費與通膨。</p>
+            </div>
         </div>
 
         <!-- 右側：歷史紀錄區 -->
-        <div class="w-full md:w-72 bg-slate-50 p-6 md:p-8 border-t md:border-t-0 md:border-l border-slate-200 overflow-y-auto no-scrollbar">
+        <div id="history-panel" class="w-full md:w-72 bg-slate-50 p-6 md:p-8 border-t md:border-t-0 md:border-l border-slate-200 overflow-y-auto no-scrollbar">
             <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">最近 5 筆紀錄</h2>
             <div id="history-list" class="space-y-3">
                 <div class="text-slate-400 text-xs italic">尚無歷史紀錄</div>
@@ -361,20 +441,29 @@
             if (currentAppMode === mode) return;
             currentAppMode = mode;
             const isCurrency = mode === 'currency';
+            const isCompound = mode === 'compound';
 
+            setTabActive('mode-normal', mode === 'normal');
             setTabActive('mode-currency', isCurrency);
-            setTabActive('mode-normal', !isCurrency);
+            setTabActive('mode-compound', isCompound);
             currencyArea.classList.toggle('hidden', !isCurrency);
             baseSymbol.classList.toggle('hidden', !isCurrency);
             rateStatus.classList.toggle('hidden', !isCurrency);
             if (isCurrency) calcScreen.classList.replace('min-h-[160px]', 'min-h-[220px]');
             else calcScreen.classList.replace('min-h-[220px]', 'min-h-[160px]');
 
+            // 複利模式：隱藏計算機螢幕、按鍵與歷史紀錄
+            calcScreen.classList.toggle('hidden', isCompound);
+            document.getElementById('keypad').classList.toggle('hidden', isCompound);
+            document.getElementById('history-panel').classList.toggle('hidden', isCompound);
+            document.getElementById('compound-panel').classList.toggle('hidden', !isCompound);
+
             if (isCurrency) {
                 updateConversions();
                 const stale = !ratesUpdatedAt || Date.now() - ratesFetchedAt > 60 * 60 * 1000;
                 if (!usdRates || stale) fetchRates();
             }
+            if (isCompound) updateCompound();
         }
 
         // ================= 匯率 =================
@@ -701,6 +790,105 @@
             updateDisplay();
         }
 
+        // ================= 複利計算 =================
+        const CP_FIELDS = ['principal', 'monthly', 'rate', 'years', 'start'];
+        const cpInput = id => document.getElementById('cp-' + id);
+
+        function parseInputNumber(el) {
+            const raw = el.value.replace(/,/g, '').trim();
+            return raw === '' ? NaN : Number(raw);
+        }
+
+        // 輸入時自動加千分位、過濾不合法字元
+        function sanitizeInput(el) {
+            const kind = el.dataset.kind;
+            let v = el.value.replace(/[^0-9.]/g, '');
+            if (kind === 'rate') {
+                const firstDot = v.indexOf('.');
+                if (firstDot !== -1) v = v.slice(0, firstDot + 1) + v.slice(firstDot + 1).replace(/\./g, '');
+            } else {
+                v = v.replace(/\./g, '');
+            }
+            if (kind === 'money') v = v.replace(/^0+(?=\d)/, '');
+            el.value = kind === 'money' ? formatNumberText(v) : v;
+        }
+
+        function formatMoney(n) {
+            return Math.round(n).toLocaleString('zh-TW');
+        }
+
+        function updateCompound() {
+            const principal = parseInputNumber(cpInput('principal'));
+            const monthly = parseInputNumber(cpInput('monthly'));
+            const rate = parseInputNumber(cpInput('rate'));
+            const years = parseInputNumber(cpInput('years'));
+            let startYear = parseInputNumber(cpInput('start'));
+
+            const P = isNaN(principal) ? 0 : principal;
+            const M = isNaN(monthly) ? 0 : monthly;
+            const yearsOk = Number.isInteger(years) && years >= 1 && years <= 100;
+            const rateOk = !isNaN(rate) && rate <= 100;
+            cpInput('years').classList.toggle('invalid', !yearsOk && cpInput('years').value !== '');
+            cpInput('rate').classList.toggle('invalid', !rateOk && cpInput('rate').value !== '');
+            if (!Number.isInteger(startYear) || startYear < 1900 || startYear > 2200) startYear = new Date().getFullYear();
+
+            const saved = {};
+            CP_FIELDS.forEach(f => { saved[f] = cpInput(f).value; });
+            saveJSON('calc-compound', saved);
+
+            const table = document.getElementById('cp-table');
+            if (!yearsOk || !rateOk) {
+                ['cp-final', 'cp-invested', 'cp-interest', 'cp-multiple'].forEach(id => { document.getElementById(id).textContent = '—'; });
+                document.getElementById('cp-final-label').textContent = '最終資產';
+                document.getElementById('cp-bar-invested').style.width = '0%';
+                document.getElementById('cp-bar-interest').style.width = '0%';
+                table.innerHTML = '<tr><td colspan="4" class="px-3 py-4 text-center text-slate-400">請輸入年利率與投資期間（1–100 年）</td></tr>';
+                return;
+            }
+
+            // 每月複利：月利率 = 年利率 ÷ 12，每月月底存入
+            const r = rate / 100 / 12;
+            let balance = P;
+            let invested = P;
+            const rows = [];
+            for (let y = 1; y <= years; y++) {
+                for (let m = 0; m < 12; m++) {
+                    balance = balance * (1 + r) + M;
+                    invested += M;
+                }
+                rows.push({ year: startYear + y - 1, invested, interest: balance - invested, balance });
+            }
+
+            const interest = balance - invested;
+            document.getElementById('cp-final-label').textContent = `最終資產（${startYear + years - 1} 年底）`;
+            document.getElementById('cp-final').textContent = 'NT$ ' + formatMoney(balance);
+            document.getElementById('cp-invested').textContent = formatMoney(invested);
+            document.getElementById('cp-interest').textContent = formatMoney(interest);
+            document.getElementById('cp-multiple').textContent = invested > 0 ? (balance / invested).toFixed(2) + ' 倍' : '—';
+
+            const total = Math.max(balance, invested, 1);
+            document.getElementById('cp-bar-invested').style.width = Math.max(0, Math.min(100, invested / total * 100)) + '%';
+            document.getElementById('cp-bar-interest').style.width = Math.max(0, Math.min(100, interest / total * 100)) + '%';
+
+            table.innerHTML = rows.map(row => `
+                <tr class="border-t border-slate-100">
+                    <td class="px-3 py-2 text-left text-slate-500">${row.year}</td>
+                    <td class="px-3 py-2 text-right">${formatMoney(row.invested)}</td>
+                    <td class="px-3 py-2 text-right text-amber-600">${formatMoney(row.interest)}</td>
+                    <td class="px-3 py-2 text-right font-semibold">${formatMoney(row.balance)}</td>
+                </tr>
+            `).join('');
+        }
+
+        (function initCompound() {
+            const saved = loadJSON('calc-compound');
+            if (saved) CP_FIELDS.forEach(f => { if (typeof saved[f] === 'string') cpInput(f).value = saved[f]; });
+            if (!cpInput('start').value) cpInput('start').value = String(new Date().getFullYear());
+            CP_FIELDS.forEach(f => {
+                cpInput(f).addEventListener('input', (e) => { sanitizeInput(e.target); updateCompound(); });
+            });
+        })();
+
         // ================= 實體鍵盤 =================
         const KEY_ACTIONS = {
             '.': () => appendNumber('.'),
@@ -720,6 +908,7 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey || e.metaKey || e.altKey) return;
+            if (currentAppMode === 'compound' || e.target.closest('input, select, textarea')) return;
             const action = /^[0-9]$/.test(e.key) ? () => appendNumber(e.key) : KEY_ACTIONS[e.key];
             if (!action) return;
             // 阻止預設行為：避免 Enter 同時「點擊」到目前有焦點的按鈕、Firefox 按 / 開啟搜尋
